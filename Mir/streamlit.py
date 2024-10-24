@@ -10,3 +10,9 @@ st.image("Figure/2_likes_trump.png")
 # streamlit run streamlit.py
 
 #We can choose my_env select interpreter here and run "streamlit run streamlit.py" directly.
+
+
+#To convert from ipynb to python
+
+ #pip install ipynb-py-convert
+ #ipynb-py-convert .\twitter_updated.ipynb .\twitter_updated.py
