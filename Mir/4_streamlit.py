@@ -288,6 +288,7 @@ plt.show()
 
 
 
+#This for sidenotes
 # Add filters in sidebar
 st.sidebar.header('Filters')
 selected_continent = st.sidebar.multiselect(
@@ -317,3 +318,4 @@ Key metrics include:
 # Footer
 st.sidebar.markdown('---')
 st.sidebar.markdown('Created with Streamlit')
+
