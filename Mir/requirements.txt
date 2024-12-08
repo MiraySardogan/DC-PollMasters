@@ -7,3 +7,9 @@ matplotlib
 leafmap
 setuptools
 textblob
+wordcloud
+
+alt
+nltk
+DateFormatter
+DayLocator
