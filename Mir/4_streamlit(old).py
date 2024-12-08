@@ -6,7 +6,6 @@ import altair as alt
 import plotly.express as px
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import leafmap.foliumap as leafmap
 
 #st.write("hello")
 #st.write("WElcome")
@@ -25,13 +24,6 @@ import leafmap.foliumap as leafmap
 #pip install ipynb-py-convert
 #ipynb-py-convert .\twitter_updated.ipynb .\twitter_updated.py
 
-#This for sidenotes
-# Add filters in sidebar
-
-selected_candidate = st.sidebar.selectbox(
-    'Select Analysis',
-    options=['None', 'Exploratory Analysis', 'Senntiment Analysis']
-)
 
 
 
@@ -75,7 +67,7 @@ tweet_count = tweet_count.rename(index={"biden_df": "Biden", "trump_df": "Trump"
 tweet_count.columns = ["candidate", "count"]
 
 # Define the colors
-color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "red"])
+color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "yellow"])
 
 # Create the bar chart with Altair
 bar_chart = alt.Chart(tweet_count).mark_bar().encode(
@@ -101,7 +93,7 @@ tweets_df['candidate_label'] = tweets_df['candidate'].map({"biden_df": "Biden", 
 daily_tweet_count = tweets_df.groupby(['date', 'candidate_label']).size().reset_index(name='tweet_count')
 
 # Define the colors for each candidate
-color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "red"])
+color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "yellow"])
 
 # Line chart for daily tweet count
 line_chart = alt.Chart(daily_tweet_count).mark_line().encode(
@@ -143,7 +135,7 @@ state_tweet_counts['candidate_label'] = state_tweet_counts['candidate'].map({"bi
 top_10_states = state_tweet_counts.groupby('candidate_label').apply(lambda x: x.nlargest(10, 'tweet_count')).reset_index(drop=True)
 
 # Define the colors for each candidate
-color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "red"])
+color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "yellow"])
 
 state_chart = alt.Chart(top_10_states).mark_bar().encode(
     x='tweet_count:Q',
@@ -186,7 +178,7 @@ likes_data.columns = ['Candidate', 'Total Likes']
 likes_data['Candidate'] = likes_data['Candidate'].replace({'biden_df': 'Biden', 'trump_df': 'Trump'})
 
 # Define the colors
-color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "red"])
+color_scale = alt.Scale(domain=["Biden", "Trump"], range=["blue", "yellow"])
 
 # Create the bar chart
 likes_chart = alt.Chart(likes_data).mark_bar().encode(
@@ -203,83 +195,112 @@ st.altair_chart(likes_chart, use_container_width=True)
 
 
 
-#show the distribution of map with likes
-st.header("Geographical Distribution of Likes")
-trump_likes_path= "USA_shp_file/trump_likes.gpkg"
-biden_likes_path= "USA_shp_file/biden_likes.gpkg"
+#Showing maps for twitter likes
+twitter= load_data()
 
-@st.cache_data
-def read_gdf(file_path):
-    gdf = gpd.read_file(file_path)
-    return gdf
+twitter_trump= twitter[twitter["candidate"]=="trump_df"]
+twitter_biden= twitter[twitter["candidate"]=="biden_df"]
 
-#now read the files
-trump_likes= read_gdf(trump_likes_path)
-biden_likes= read_gdf(biden_likes_path)
+likes_trump= twitter_trump.groupby("state")["likes"].sum()
+likes_trump= pd.DataFrame(likes_trump).reset_index().rename(columns={"state": "name"}) #rename the column state as name
 
-# Create the map and add the selected GeoDataFrame
-basemap = st.selectbox(
-    'Select a Basemap',
-    ['CartoDB.DarkMatter', 'OpenStreetMap', 'CartoDB.Positron'],
-    key="basemap_selectbox"
-)
+likes_biden= twitter_biden.groupby("state")["likes"].sum()
+likes_biden= pd.DataFrame(likes_biden).reset_index().rename(columns={"state": "name"})
 
-# Create a select box for choosing the dataset
-dataset_choice = st.selectbox(
-    "Select Candidate",
-    ["Trump Likes", "Biden Likes"],
-    key="dataset_selectbox"
-)
+# Load the USA states shapefile
+#usa_states = gpd.read_file("E:/ReDi_School/Data_Circle/Project/dataset/ne_110m_admin_1_states_provinces/ne_110m_admin_1_states_provinces.shp")
+usa_states = gpd.read_file("USA_shp_file/ne_110m_admin_1_states_provinces.shp")
 
-# Set GeoDataFrame and colormap based on the selection
-if dataset_choice == "Trump Likes":
-    selected_gdf = trump_likes  # Replace with your actual GeoDataFrame
-    cmap = plt.cm.Reds  # Red gradient for Trump
-    title = "Likes for Trump"
-else:
-    selected_gdf = biden_likes  # Replace with your actual GeoDataFrame
-    cmap = plt.cm.Blues  # Blue gradient for Biden
-    title = "Likes for Biden"
+usa_trump_like= usa_states.merge(likes_trump, on="name", how= "inner")
+usa_biden_like= usa_states.merge(likes_biden, on="name", how= "inner")
 
-# Normalize the 'likes' column and assign colors
-values = selected_gdf['likes']
-norm = mcolors.Normalize(vmin=values.min(), vmax=values.max())
-selected_gdf['color'] = selected_gdf['likes'].apply(lambda x: mcolors.to_hex(cmap(norm(x))))
+st.header("Comparing Likes between States of US")
 
-m = leafmap.Map(
-    layers_control=False,
-    draw_control=False,
-    measure_control=False,
-    fullscreen_control=False,
-)
-m.add_basemap(basemap)
+#st.map(usa_states)
 
-m.add_gdf(
-    gdf=selected_gdf,
-    zoom_to_layer=True,
-    style_function=lambda feature: {
-        'fillColor': feature['properties']['color'],
-        'color': 'black',
-        'weight': 0.5,
-        'fillOpacity': 0.7,
-    }
-)
 
-# Display the map
-st.write(f"Map showing {title}")
-m.to_streamlit(900, 650)
+# Function to plot the shapefile
 
-# Add a colorbar
-fig, ax = plt.subplots(figsize=(6, 1))
-fig.subplots_adjust(bottom=0.5)
+#First visualize the USA map
+#def plot_map(usa_data, title, column):
+def plot_map(usa_data):
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    #usa_data.plot(column=column, ax=ax, legend=True, cmap='Blues', edgecolor='black')
+    #usa_data.plot(column=column, ax=ax, edgecolor='black')
+    usa_data.plot(ax=ax, facecolor= "white", edgecolor='black')
+    #ax.set_title(title)
+    ax.set_axis_off()
+    st.pyplot(fig)
 
-sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-sm._A = []
-cbar = fig.colorbar(sm, cax=ax, orientation='horizontal')
-cbar.set_label("Likes")
+# Display map for Trump
+#plot_map(usa_states, "Likes for Trump", "likes")
+plot_map(usa_states)
 
+
+#Now plot the total likes as color ramp according to states both for Trump and Biden respectively
+fig, axes= plt.subplots(1,2)
+fig.set_size_inches(30,10)
+
+# Define discrete color levels (for example, from 0 to 700,000 in intervals of 100,000)
+#levels = np.arange(0, 700001, 100000)  # Adjust based on your data range
+
+#create a list for dataframes
+data_frames= [usa_trump_like, usa_biden_like]
+candidate= ["Trump", "Biden"]
+color_bars= ["YlOrBr", "Blues"]
+
+for index, ax in enumerate(axes.flat):
+    
+    # Define discrete color levels (for example, from 0 to 700,000 in intervals of 100,000)
+    levels = np.arange(0, data_frames[index]["likes"].max(), 100000)  # Adjust based on your data range
+
+    # Create a colormap and a corresponding norm for the levels
+    cmap = plt.get_cmap(color_bars[index])
+    norm = mcolors.BoundaryNorm(levels, ncolors=cmap.N, clip=True)
+    
+    # Plot the USA with states
+    data_frames[index].plot(
+        ax=ax,
+        column="likes",    # Column to base the colors on
+        cmap=cmap,         # Use the defined colormap
+        norm=norm,         # Apply the discrete color normalization
+        edgecolor='black', # Add borderlines for states
+        legend=False        # Show legend
+    )
+
+    ax.set_title(f"Likes for {candidate[index]}", fontsize= 30, fontweight="bold") 
+
+    # Add a colorbar manually
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm._A = []  # Empty array for the ScalarMappable
+    cbar = fig.colorbar(sm, ax=ax, shrink= 0.9)
+    cbar.ax.set_title("Likes", fontsize= 30, fontweight="bold", pad=20)
+    cbar.ax.tick_params(labelsize=20)  # Adjust the labelsize as needed
+
+    #ax.set_axis_off()
+    # Remove tick labels
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+plt.tight_layout()
 st.pyplot(fig)
+plt.show()
 
+
+
+#This for sidenotes
+# Add filters in sidebar
+st.sidebar.header('Filters')
+selected_continent = st.sidebar.multiselect(
+    'Select Continent',
+    options=df['continent'].unique(),
+    #default=df['continent'].unique()
+)
+
+selected_candidate = st.sidebar.selectbox(
+    'Select Candidate',
+    options=['Both', 'trump_df', 'biden_df']
+)
 
 
 # Add some explanatory text
