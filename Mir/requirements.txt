@@ -1,0 +1,8 @@
+streamlit
+folium
+streamlit-folium
+geopandas
+pandas
+matplotlib
+leafmap
+setuptools
