@@ -10,3 +10,4 @@ textblob
 wordcloud
 WordCloud
 seaborn
+nltk
